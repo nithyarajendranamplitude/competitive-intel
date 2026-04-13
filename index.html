@@ -156,40 +156,7 @@ const PRODUCTS = {
   }
 };
 
-const SYSTEM_PROMPT = `You are an internal competitive intelligence assistant for Amplitude employees.
-
-When given an Amplitude product, competitors, and optional context, you MUST respond with ONLY valid JSON (no markdown, no backticks, no preamble). The JSON must follow this exact structure:
-
-{
-  "features": [
-    {
-      "category": "Category Name",
-      "items": [
-        {
-          "feature": "Feature name",
-          "amplitude": "full" | "partial" | "none" | "unknown",
-          "amplitude_note": "Brief note about Amplitude capability",
-          "competitors": {
-            "Competitor Name": {
-              "status": "full" | "partial" | "none" | "unknown",
-              "note": "Brief note"
-            }
-          }
-        }
-      ]
-    }
-  ],
-  "summary": "A 2-3 paragraph plain-language summary of the key differences, honest about gaps, and noting which competitor differences actually matter in practice vs. checkbox items. Be specific. No corporate buzzwords.",
-  "watch_out": "1-2 sentences on things a salesperson should be careful about or aware of when competing here."
-}
-
-Rules:
-- Be honest about gaps. If a competitor has something Amplitude doesn't, say so.
-- "full" = strong support, "partial" = exists but limited, "none" = doesn't have it, "unknown" = not sure
-- Include 8-15 features across 2-4 categories
-- Keep notes concise (under 15 words each)
-- Ground your analysis in real, current product capabilities
-- If context is provided, weight your feature selection toward what's relevant`;
+const SYSTEM_PROMPT = 'You are an internal competitive intelligence assistant for Amplitude employees. When given an Amplitude product, competitors, and optional context, you MUST respond with ONLY valid JSON (no markdown, no backticks, no preamble). The JSON must follow this exact structure: {"features":[{"category":"Category Name","items":[{"feature":"Feature name","amplitude":"full","amplitude_note":"Brief note","competitors":{"Competitor Name":{"status":"full","note":"Brief note"}}}]}],"summary":"A 2-3 paragraph plain-language summary of the key differences, honest about gaps, and noting which competitor differences actually matter in practice vs. checkbox items. Be specific. No corporate buzzwords.","watch_out":"1-2 sentences on things a salesperson should be careful about."} Rules: Be honest about gaps. full = strong support, partial = exists but limited, none = does not have it, unknown = not sure. Include 8-15 features across 2-4 categories. Keep notes concise under 15 words each. Ground analysis in real current product capabilities. If context is provided weight features toward what is relevant. The amplitude and status fields MUST be one of: full, partial, none, unknown.';
 
 const BADGE_MAP = {
   full: {label:"\u2713", cls:"badge-full"},
@@ -211,7 +178,7 @@ function saveApiKey() {
   apiKey = document.getElementById('apiKeyInput').value.trim();
   const status = document.getElementById('apiKeyStatus');
   if (apiKey.startsWith('sk-ant-')) {
-    status.textContent = '✓ Key saved (browser only)';
+    status.textContent = '\u2713 Key saved (browser only)';
     status.className = 'status connected';
   } else if (apiKey.length > 0) {
     status.textContent = 'Key should start with sk-ant-...';
@@ -224,15 +191,8 @@ function saveApiKey() {
 
 function updateProgress() {
   for (let i = 1; i <= 3; i++) {
-    const seg = document.getElementById('prog' + i);
-    const label = document.getElementById('progLabel' + i);
-    if (i <= state.step) {
-      seg.className = 'progress-seg active';
-      label.style.color = '#818cf8';
-    } else {
-      seg.className = 'progress-seg inactive';
-      label.style.color = '#334155';
-    }
+    document.getElementById('prog' + i).className = 'progress-seg ' + (i <= state.step ? 'active' : 'inactive');
+    document.getElementById('progLabel' + i).style.color = i <= state.step ? '#818cf8' : '#334155';
   }
 }
 
@@ -240,232 +200,199 @@ function renderStep1() {
   document.getElementById('progressBar').style.display = '';
   document.getElementById('newBtn').style.display = 'none';
   updateProgress();
-  let html = '<div class="animate-in">';
-  html += '<div style="margin-bottom:8px;font-size:32px" class="float">\uD83C\uDFAF</div>';
-  html += '<h2 class="step-title">Which product are you comparing?</h2>';
-  html += '<p class="step-desc">Pick the Amplitude product you want competitive intel on.</p>';
-  html += '<div class="product-grid">';
+  let h = '<div class="animate-in"><div style="margin-bottom:8px;font-size:32px" class="float">\uD83C\uDFAF</div>';
+  h += '<h2 class="step-title">Which product are you comparing?</h2>';
+  h += '<p class="step-desc">Pick the Amplitude product you want competitive intel on.</p>';
+  h += '<div class="product-grid">';
   for (const [name, info] of Object.entries(PRODUCTS)) {
     const sel = state.product === name ? ' selected' : '';
-    html += '<button class="product-card' + sel + '" onclick="selectProduct(\'' + name.replace(/'/g, "\\'") + '\')">';
-    html += '<div class="product-name">' + name + '</div>';
-    html += '<div class="product-desc">' + info.description + '</div>';
-    html += '</button>';
+    h += '<button class="product-card' + sel + '" onclick="selectProduct(\'' + name.replace(/'/g, "\\'") + '\')"><div class="product-name">' + name + '</div><div class="product-desc">' + info.description + '</div></button>';
   }
-  html += '</div>';
-  html += '<div style="margin-top:24px;display:flex;justify-content:flex-end">';
-  html += '<button class="btn-primary" ' + (!state.product ? 'disabled' : '') + ' onclick="goStep(2)">Next \u2192</button>';
-  html += '</div></div>';
-  document.getElementById('content').innerHTML = html;
+  h += '</div><div style="margin-top:24px;display:flex;justify-content:flex-end"><button class="btn-primary" ' + (!state.product ? 'disabled' : '') + ' onclick="goStep(2)">Next \u2192</button></div></div>';
+  document.getElementById('content').innerHTML = h;
 }
 
-function selectProduct(name) {
-  state.product = name;
-  state.competitors = [];
-  renderStep1();
-}
+function selectProduct(name) { state.product = name; state.competitors = []; renderStep1(); }
 
 function renderStep2() {
   updateProgress();
   const comps = PRODUCTS[state.product].competitors;
-  let html = '<div class="animate-in">';
-  html += '<div style="margin-bottom:8px;font-size:32px">\u2694\uFE0F</div>';
-  html += '<h2 class="step-title">Who are you up against?</h2>';
-  html += '<p style="font-size:14px;color:#64748b;margin-bottom:6px">Select up to 4 competitors to compare against ' + state.product + '.</p>';
-  html += '<p style="font-size:12px;color:#475569;margin-bottom:24px">' + state.competitors.length + '/4 selected</p>';
-  html += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
-  for (const c of comps) {
-    const sel = state.competitors.includes(c) ? ' selected' : '';
-    html += '<button class="chip' + sel + '" onclick="toggleComp(\'' + c.replace(/'/g, "\\'") + '\')">' + c + '</button>';
-  }
-  html += '</div>';
-  html += '<div style="display:flex;gap:8px;margin-bottom:24px">';
-  html += '<input type="text" class="custom-input" id="customComp" placeholder="Add another competitor..." onkeydown="if(event.key===\'Enter\')addCustomComp()">';
-  html += '<button class="btn-add" onclick="addCustomComp()">Add</button>';
-  html += '</div>';
-  html += '<div style="display:flex;justify-content:space-between">';
-  html += '<button class="btn-back" onclick="goStep(1)">\u2190 Back</button>';
-  html += '<button class="btn-primary" ' + (state.competitors.length === 0 ? 'disabled' : '') + ' onclick="goStep(3)">Next \u2192</button>';
-  html += '</div></div>';
-  document.getElementById('content').innerHTML = html;
+  let h = '<div class="animate-in"><div style="margin-bottom:8px;font-size:32px">\u2694\uFE0F</div>';
+  h += '<h2 class="step-title">Who are you up against?</h2>';
+  h += '<p style="font-size:14px;color:#64748b;margin-bottom:6px">Select up to 4 competitors to compare against ' + state.product + '.</p>';
+  h += '<p style="font-size:12px;color:#475569;margin-bottom:24px">' + state.competitors.length + '/4 selected</p>';
+  h += '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">';
+  for (const c of comps) { h += '<button class="chip' + (state.competitors.includes(c) ? ' selected' : '') + '" onclick="toggleComp(\'' + c.replace(/'/g, "\\'") + '\')">' + c + '</button>'; }
+  h += '</div><div style="display:flex;gap:8px;margin-bottom:24px"><input type="text" class="custom-input" id="customComp" placeholder="Add another competitor..." onkeydown="if(event.key===\'Enter\')addCustomComp()"><button class="btn-add" onclick="addCustomComp()">Add</button></div>';
+  h += '<div style="display:flex;justify-content:space-between"><button class="btn-back" onclick="goStep(1)">\u2190 Back</button><button class="btn-primary" ' + (state.competitors.length === 0 ? 'disabled' : '') + ' onclick="goStep(3)">Next \u2192</button></div></div>';
+  document.getElementById('content').innerHTML = h;
 }
 
-function toggleComp(name) {
-  const idx = state.competitors.indexOf(name);
-  if (idx > -1) state.competitors.splice(idx, 1);
-  else if (state.competitors.length < 4) state.competitors.push(name);
-  renderStep2();
-}
-
-function addCustomComp() {
-  const input = document.getElementById('customComp');
-  const name = input.value.trim();
-  if (name && !state.competitors.includes(name) && state.competitors.length < 4) {
-    state.competitors.push(name);
-    renderStep2();
-  }
-}
+function toggleComp(name) { const i = state.competitors.indexOf(name); if (i > -1) state.competitors.splice(i, 1); else if (state.competitors.length < 4) state.competitors.push(name); renderStep2(); }
+function addCustomComp() { const el = document.getElementById('customComp'); const n = el.value.trim(); if (n && !state.competitors.includes(n) && state.competitors.length < 4) { state.competitors.push(n); renderStep2(); } }
 
 function renderStep3() {
   updateProgress();
-  let html = '<div class="animate-in">';
-  html += '<div style="margin-bottom:8px;font-size:32px">\uD83D\uDCAC</div>';
-  html += '<h2 class="step-title">Any additional context?</h2>';
-  html += '<p class="step-desc">Optional. Help the AI focus on what matters most to you right now.</p>';
-  html += '<div class="comparison-box">';
-  html += '<div class="comparison-label">YOUR COMPARISON</div>';
-  html += '<div class="comparison-product">' + state.product + '</div>';
-  html += '<div class="comparison-vs">vs. ' + state.competitors.join(', ') + '</div>';
-  html += '</div>';
-  html += '<textarea class="context-input" id="contextInput" placeholder="e.g. I am on a call with a prospect who currently uses VWO and they are asking specifically about visual editor capabilities and personalization">' + state.context + '</textarea>';
-  html += '<div style="display:flex;justify-content:space-between;margin-top:24px">';
-  html += '<button class="btn-back" onclick="goStep(2)">\u2190 Back</button>';
-  html += '<button class="btn-generate" onclick="generate()">\u26A1 Generate Comparison</button>';
-  html += '</div></div>';
-  document.getElementById('content').innerHTML = html;
+  let h = '<div class="animate-in"><div style="margin-bottom:8px;font-size:32px">\uD83D\uDCAC</div>';
+  h += '<h2 class="step-title">Any additional context?</h2>';
+  h += '<p class="step-desc">Optional. Help the AI focus on what matters most to you right now.</p>';
+  h += '<div class="comparison-box"><div class="comparison-label">YOUR COMPARISON</div><div class="comparison-product">' + state.product + '</div><div class="comparison-vs">vs. ' + state.competitors.join(', ') + '</div></div>';
+  h += '<textarea class="context-input" id="contextInput" placeholder="e.g. I am on a call with a prospect who currently uses VWO and they are asking specifically about visual editor capabilities">' + state.context + '</textarea>';
+  h += '<div style="display:flex;justify-content:space-between;margin-top:24px"><button class="btn-back" onclick="goStep(2)">\u2190 Back</button><button class="btn-generate" onclick="generate()">\u26A1 Generate Comparison</button></div></div>';
+  document.getElementById('content').innerHTML = h;
 }
 
 function renderLoading() {
   document.getElementById('progressBar').style.display = 'none';
-  let html = '<div class="animate-in" style="text-align:center;padding-top:60px">';
-  html += '<div class="loading-icon">\u26A1</div>';
-  html += '<div class="loading-text" id="loadingText">' + LOADING_PHRASES[0] + '</div>';
-  html += '<div style="font-size:12px;color:#475569">Comparing ' + state.product + ' vs. ' + state.competitors.join(', ') + '</div>';
-  html += '</div>';
-  document.getElementById('content').innerHTML = html;
+  let h = '<div class="animate-in" style="text-align:center;padding-top:60px"><div class="loading-icon">\u26A1</div><div class="loading-text" id="loadingText">' + LOADING_PHRASES[0] + '</div><div style="font-size:12px;color:#475569">Comparing ' + state.product + ' vs. ' + state.competitors.join(', ') + '</div></div>';
+  document.getElementById('content').innerHTML = h;
   let i = 0;
-  window._loadingInterval = setInterval(function() {
-    i = (i + 1) % LOADING_PHRASES.length;
-    const el = document.getElementById('loadingText');
-    if (el) el.textContent = LOADING_PHRASES[i];
-  }, 3000);
+  window._li = setInterval(function() { i = (i + 1) % LOADING_PHRASES.length; const el = document.getElementById('loadingText'); if (el) el.textContent = LOADING_PHRASES[i]; }, 3000);
 }
 
 function renderResults(data) {
-  if (window._loadingInterval) clearInterval(window._loadingInterval);
+  if (window._li) clearInterval(window._li);
   document.getElementById('progressBar').style.display = 'none';
   document.getElementById('newBtn').style.display = '';
   const comps = state.competitors;
   const cols = comps.length + 1;
-  const colTemplate = '200px repeat(' + cols + ', 1fr)';
-  let html = '<div class="animate-in">';
-  html += '<div class="result-title">' + state.product + ' vs. ' + comps.join(', ') + '</div>';
-  html += '<div class="result-sub">Generated just now with live web data</div>';
-  html += '<div class="legend">';
-  for (const [key, info] of Object.entries(BADGE_MAP)) {
-    html += '<div class="legend-item"><div class="legend-badge ' + info.cls + '">' + info.label + '</div><span class="legend-label">' + key + '</span></div>';
-  }
-  html += '</div>';
+  const gt = '200px repeat(' + cols + ', 1fr)';
+  let h = '<div class="animate-in"><div class="result-title">' + state.product + ' vs. ' + comps.join(', ') + '</div><div class="result-sub">Generated just now with live web data</div>';
+  h += '<div class="legend">';
+  for (const [k, v] of Object.entries(BADGE_MAP)) h += '<div class="legend-item"><div class="legend-badge ' + v.cls + '">' + v.label + '</div><span class="legend-label">' + k + '</span></div>';
+  h += '</div>';
   if (data.features) {
     for (const cat of data.features) {
-      html += '<div class="cat-title">' + cat.category + '</div>';
-      html += '<div class="grid-wrap">';
-      html += '<div class="grid-header" style="grid-template-columns:' + colTemplate + '">';
-      html += '<div class="grid-header-feature">FEATURE</div>';
-      html += '<div class="grid-header-amp">AMPLITUDE</div>';
-      for (const c of comps) html += '<div class="grid-header-comp">' + c.toUpperCase() + '</div>';
-      html += '</div>';
+      h += '<div class="cat-title">' + cat.category + '</div><div class="grid-wrap"><div class="grid-header" style="grid-template-columns:' + gt + '"><div class="grid-header-feature">FEATURE</div><div class="grid-header-amp">AMPLITUDE</div>';
+      for (const c of comps) h += '<div class="grid-header-comp">' + c.toUpperCase() + '</div>';
+      h += '</div>';
       for (let ii = 0; ii < cat.items.length; ii++) {
         const item = cat.items[ii];
-        const border = ii < cat.items.length - 1 ? 'border-bottom:1px solid rgba(148,163,184,0.05)' : '';
-        html += '<div class="grid-row" style="grid-template-columns:' + colTemplate + ';' + border + '">';
-        html += '<div class="grid-feature">' + item.feature + '</div>';
+        const brd = ii < cat.items.length - 1 ? 'border-bottom:1px solid rgba(148,163,184,0.05)' : '';
+        h += '<div class="grid-row" style="grid-template-columns:' + gt + ';' + brd + '"><div class="grid-feature">' + item.feature + '</div>';
         const ab = BADGE_MAP[item.amplitude] || BADGE_MAP.unknown;
-        html += '<div style="text-align:center"><div class="badge ' + ab.cls + '">' + ab.label + '</div>';
-        if (item.amplitude_note) html += '<div class="badge-note">' + item.amplitude_note + '</div>';
-        html += '</div>';
+        h += '<div style="text-align:center"><div class="badge ' + ab.cls + '">' + ab.label + '</div>';
+        if (item.amplitude_note) h += '<div class="badge-note">' + item.amplitude_note + '</div>';
+        h += '</div>';
         for (const c of comps) {
-          const comp = item.competitors[c] || {status:"unknown",note:""};
+          const comp = (item.competitors && item.competitors[c]) || {status:"unknown",note:""};
           const cb = BADGE_MAP[comp.status] || BADGE_MAP.unknown;
-          html += '<div style="text-align:center"><div class="badge ' + cb.cls + '">' + cb.label + '</div>';
-          if (comp.note) html += '<div class="badge-note">' + comp.note + '</div>';
-          html += '</div>';
+          h += '<div style="text-align:center"><div class="badge ' + cb.cls + '">' + cb.label + '</div>';
+          if (comp.note) h += '<div class="badge-note">' + comp.note + '</div>';
+          h += '</div>';
         }
-        html += '</div>';
+        h += '</div>';
       }
-      html += '</div>';
+      h += '</div>';
     }
   }
-  if (data.summary) {
-    html += '<div class="takeaways"><div class="takeaways-title">KEY TAKEAWAYS</div>';
-    html += '<div class="takeaways-body">' + data.summary + '</div></div>';
-  }
-  if (data.watch_out) {
-    html += '<div class="watchout"><div class="watchout-title">\u26A0\uFE0F WATCH OUT</div>';
-    html += '<div class="watchout-body">' + data.watch_out + '</div></div>';
-  }
-  html += '</div>';
-  document.getElementById('content').innerHTML = html;
+  if (data.summary) h += '<div class="takeaways"><div class="takeaways-title">KEY TAKEAWAYS</div><div class="takeaways-body">' + data.summary + '</div></div>';
+  if (data.watch_out) h += '<div class="watchout"><div class="watchout-title">\u26A0\uFE0F WATCH OUT</div><div class="watchout-body">' + data.watch_out + '</div></div>';
+  h += '</div>';
+  document.getElementById('content').innerHTML = h;
 }
 
 async function generate() {
   const ctxEl = document.getElementById('contextInput');
   if (ctxEl) state.context = ctxEl.value;
-  if (!apiKey || !apiKey.startsWith('sk-ant-')) {
-    alert('Please paste your Anthropic API key in the bar at the top of the page first.');
-    return;
-  }
+  if (!apiKey || !apiKey.startsWith('sk-ant-')) { alert('Please paste your Anthropic API key in the bar at the top first.'); return; }
   renderLoading();
-  const prompt = 'Compare Amplitude\'s ' + state.product + ' product against these competitors: ' + state.competitors.join(', ') + '.\n' + (state.context ? 'Additional context from the user: ' + state.context + '\n' : '') + 'Return ONLY valid JSON, no markdown, no backticks.';
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [{role:'user', content: prompt}],
-        tools: [{type:'web_search_20250305', name:'web_search'}]
-      })
-    });
-    const data = await resp.json();
-    let responseText = '';
-    if (data.content) {
-      for (const block of data.content) {
-        if (block.type === 'text') responseText += block.text;
+  const prompt = 'Compare Amplitude\'s ' + state.product + ' product against these competitors: ' + state.competitors.join(', ') + '.\n' + (state.context ? 'Additional context: ' + state.context + '\n' : '') + 'Return ONLY valid JSON, no markdown, no backticks, no explanation before or after the JSON.';
+
+  let allText = '';
+  let lastError = '';
+
+  // Try up to 2 times handling the multi-turn tool use flow
+  let messages = [{role:'user', content: prompt}];
+  for (let turn = 0; turn < 3; turn++) {
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 16000,
+          system: SYSTEM_PROMPT,
+          messages: messages,
+          tools: [{type:'web_search_20250305', name:'web_search', max_uses: 3}]
+        })
+      });
+      const data = await resp.json();
+      console.log('API response turn ' + turn + ':', JSON.stringify(data).substring(0, 500));
+
+      if (data.error) {
+        lastError = data.error.message || JSON.stringify(data.error);
+        break;
+      }
+
+      // Collect text blocks
+      let turnText = '';
+      let hasToolUse = false;
+      let toolResults = [];
+
+      if (data.content) {
+        for (const block of data.content) {
+          if (block.type === 'text') turnText += block.text;
+          if (block.type === 'tool_use') {
+            hasToolUse = true;
+            toolResults.push({type: 'tool_result', tool_use_id: block.id, content: 'Search complete.'});
+          }
+        }
+      }
+
+      allText += turnText;
+
+      // If end_turn or no tool use, we are done
+      if (data.stop_reason === 'end_turn' || !hasToolUse) break;
+
+      // Otherwise continue the conversation with tool results
+      messages.push({role: 'assistant', content: data.content});
+      messages.push({role: 'user', content: toolResults});
+
+    } catch (err) {
+      lastError = err.message;
+      break;
+    }
+  }
+
+  console.log('All text collected:', allText.substring(0, 300));
+
+  // Try to parse JSON from collected text
+  let parsed = null;
+  try { parsed = JSON.parse(allText); } catch(e) {
+    // Try to find JSON object in the text
+    const matches = allText.match(/\{[\s\S]*\}/g);
+    if (matches) {
+      // Try each match, longest first
+      const sorted = matches.sort(function(a, b) { return b.length - a.length; });
+      for (const m of sorted) {
+        try { parsed = JSON.parse(m); if (parsed.features) break; parsed = null; } catch(e2) {}
       }
     }
-    let parsed = null;
-    try { parsed = JSON.parse(responseText); } catch(e) {
-      const m = responseText.match(/\{[\s\S]*\}/);
-      if (m) try { parsed = JSON.parse(m[0]); } catch(e2) {}
-    }
-    if (parsed && parsed.features) {
-      state.result = parsed;
-      state.step = 4;
-      renderResults(parsed);
-    } else {
-      renderError("Couldn't parse the comparison. The AI response may have been cut off. Try again or use fewer competitors.");
-    }
-  } catch (err) {
-    renderError("Something went wrong: " + err.message);
+  }
+
+  if (parsed && parsed.features) {
+    state.result = parsed;
+    state.step = 4;
+    renderResults(parsed);
+  } else {
+    renderError(lastError || "Could not parse the comparison. The AI may not have returned valid JSON. Try again with fewer competitors or simpler context.");
   }
 }
 
 function renderError(msg) {
-  if (window._loadingInterval) clearInterval(window._loadingInterval);
+  if (window._li) clearInterval(window._li);
   document.getElementById('progressBar').style.display = '';
   document.getElementById('content').innerHTML = '<div class="error-box">' + msg + '<div style="margin-top:12px"><button style="padding:8px 20px;border-radius:8px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit" onclick="generate()">Try again</button></div></div>';
 }
 
-function goStep(n) {
-  state.step = n;
-  if (n === 1) renderStep1();
-  else if (n === 2) renderStep2();
-  else if (n === 3) renderStep3();
-}
-
-function resetApp() {
-  state = {step:1, product:null, competitors:[], context:'', result:null};
-  goStep(1);
-}
-
+function goStep(n) { state.step = n; if (n===1) renderStep1(); else if (n===2) renderStep2(); else if (n===3) renderStep3(); }
+function resetApp() { state = {step:1, product:null, competitors:[], context:'', result:null}; goStep(1); }
 renderStep1();
 </script>
 </body>
