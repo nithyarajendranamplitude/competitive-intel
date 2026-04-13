@@ -306,13 +306,13 @@ async function generate() {
   let messages = [{role:'user', content: prompt}];
   for (let turn = 0; turn < 3; turn++) {
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      const resp = await fetch('https://amp-intel-proxy.nithya-rajendran.workers.dev', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true'
+          
+          
+          
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
